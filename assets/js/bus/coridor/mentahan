@@ -1,0 +1,82 @@
+var locationsc = [
+    { name: "CBD Ciledug", coords: [-6.224506016506443, 106.70850145228289] },
+    { name: "SDN PONDOK Bahar 4/ Ciledug Indah", coords: [-6.221951338605795, 106.69907122419416] },
+    { name: "Sudirmara Pinang", coords: [-6.221291392595264, 106.68843416919593] },
+    { name: "Mts", coords: [-6.215603104495711, 106.6880399140661] },
+    { name: "Kunciran", coords: [-6.214287270339439, 106.6779934710267] },
+    { name: "Kenanga 1", coords: [-6.137129473486055, 106.67419988278213] },
+    { name: "Poris Plawad Indah", coords: [-6.190632640874684, 106.66870786925428] },
+    { name: "Poris Plawad", coords: [-6.171999618604605, 106.66461407593208] },
+    { name: "RS Emc", coords: [-6.1843846667080795, 106.64772926577469] },
+    { name: "Veteran", coords: [-6.184558692626777, 106.64177749182863] },
+    { name: "Laksa Kor.3", coords: [-6.191147772249799, 106.63841864323523] },
+    { name: "Tangcity Mall Sisi Belakang/ Lobi Perintis", coords: [-6.193308188698745, 106.63326828710218] },
+];
+
+// Initialize second bus marker for Location B
+var carMarkerc = L.marker(locationsc[0].coords, { icon: carIcon }).addTo(map);
+
+// Routing Control for Bus 2
+var routeControlc = L.Routing.control({
+    waypoints: [
+        L.latLng(locationsc[0].coords),
+        ...locationsc.map(location => L.latLng(location.coords))
+    ],
+    createMarker: function() { return null; },  // Disable default markers
+    routeWhileDragging: true,
+    show: false,
+    router: L.Routing.osrmv1({
+        serviceUrl: 'https://router.project-osrm.org/route/v1',
+        profile: 'driving'
+    }),
+    lineOptions: {  // Set warna garis rute
+        styles: [{ color: 'purple', opacity: 0.7, weight: 5 }]
+    }
+}).addTo(map);
+
+// Event listener for Bus 2 route
+routeControlc.on('routesfound', function(e) {
+    var route = e.routes[0].coordinates;
+    var instructions = e.routes[0].instructions;
+    var i = 0;
+
+    function moveCarc(index) {
+        if (index < instructions.length) {
+            var instruksi = instructions[index];
+            var stepPoints = route.slice(i, i + Math.ceil(instruksi.time));
+
+            var j = 0;
+            function animateStepc() {
+                if (j < stepPoints.length) {
+                    carMarkerc.setLatLng(stepPoints[j]);
+                    j++;
+                    setTimeout(animateStepc, 500);  // Adjust timing as needed
+                } else {
+                    i += stepPoints.length;
+                    moveCarc(index + 1);
+                }
+            }
+            animateStepc();
+        }
+    }
+
+    moveCarc(0);
+
+    // Populate table for route B (similar to route A if needed)
+    var routeTableBodyc = document.getElementById('routeTableBodyc');
+    instructions.forEach(function(instruksi, index) {
+        translateText(instruksi.text, function(translatedText) {
+            var distanceText = instruksi.distance >= 1000 ? (instruksi.distance / 1000).toFixed(2) + ' km' : instruksi.distance + ' meter';
+            var row = document.createElement('tr');
+            row.innerHTML = '<td>' + (index + 1) + '</td><td>' + translatedText + '</td><td>' + distanceText + '</td><td>' + Math.ceil(instruksi.time / 60) + ' menit</td>';
+            routeTableBodyc.appendChild(row);
+        });
+    });
+});
+
+// Optionally, add bus stops for Route B if needed
+locationsc.forEach(function(location) {
+    L.marker(location.coords, { icon: busStopIcon })
+        .addTo(map)
+        .bindPopup(location.name);
+});
